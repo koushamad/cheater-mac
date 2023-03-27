@@ -9,22 +9,27 @@ import (
 	"github.com/atotto/clipboard"
 )
 
+const line = "\n\n----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n"
+const defaultPrompt = "Solve this challenge and develop a code for it in Golang  and  explain your solution in English language B1 level." + line
+
 var (
-	req chan Message
-	res chan Message
+	req  chan Message
+	res  chan Message
+	done chan bool
 
 	cheatContent = make(chan Message, 1)
-	contentText  = ""
+	contentText  = defaultPrompt
 
 	myApp            = app.New()
 	myWindow         = myApp.NewWindow("Smart Cheater AI")
-	label            = widget.NewLabelWithStyle(contentText, fyne.TextAlignLeading, fyne.TextStyle{Monospace: true})
+	label            = widget.NewMultiLineEntry()
 	body             = container.NewScroll(label)
 	loadingIndicator = widget.NewProgressBarInfinite()
 	askButton        = widget.NewButton("Answer", onAnswerTapped)
 	copyButton       = widget.NewButton("Copy", copyText)
+	clearButton      = widget.NewButton("Clear", clearText)
 	promptInput      = widget.NewEntry()
-	buttons          = container.NewHBox(askButton, copyButton)
+	buttons          = container.NewHBox(askButton, copyButton, clearButton)
 	footer           = container.NewHSplit(promptInput, buttons)
 	content          = container.NewVSplit(body, footer)
 )
@@ -32,12 +37,13 @@ var (
 func init() {
 	req = make(chan Message)
 	res = make(chan Message)
+	done = make(chan bool)
 
 	myWindow.Resize(fyne.NewSize(800, 600))
 	label.Wrapping = fyne.TextWrapWord
 	label.Resize(fyne.NewSize(300, label.MinSize().Height))
 	promptInput.SetPlaceHolder("Enter Your Prompt")
-	promptInput.SetText("Solve this challenge")
+	promptInput.SetText("")
 	footer.SetOffset(0.99)
 	content.SetOffset(0.99)
 	myWindow.SetContent(content)
@@ -56,19 +62,21 @@ func listenServer() {
 	for {
 		select {
 		case msg := <-cheatContent:
-			contentText = msg.Content + "\n\n" + "--------------------------------------------------------------------------------------------------\n\n"
-			label.SetText(label.Text + contentText)
+			contentText += msg.Content + line
+			label.SetText(contentText)
 		}
 	}
 }
 
 func runServer() {
-	go Listen(req, res)
+	go Listen(req, res, done)
 
 	for {
 		select {
 		case m := <-req:
 			cheatContent <- m
+		case <-done:
+			return
 		}
 	}
 }
@@ -83,6 +91,11 @@ func copyText() {
 		showErrorDialog(err)
 		return
 	}
+}
+
+func clearText() {
+	label.SetText("defaultPrompt")
+	contentText = defaultPrompt
 }
 
 func onAnswerTapped() {

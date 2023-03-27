@@ -19,7 +19,7 @@ var apiKey = "test"
 //var url = "ws://localhost:8080/ws"
 var url = "wss://cheater-server-mbmu9.ondigitalocean.app/ws"
 
-func Listen(req chan Message, res chan Message) {
+func Listen(req chan Message, res chan Message, done chan bool) {
 	// Connect to the WebSocket server
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
@@ -39,6 +39,7 @@ func Listen(req chan Message, res chan Message) {
 			case msg := <-res:
 				if err := conn.WriteJSON(msg); err != nil {
 					showErrorDialog(err)
+					continue
 				}
 			}
 		}
@@ -49,6 +50,8 @@ func Listen(req chan Message, res chan Message) {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			showErrorDialog(err)
+			done <- true
+			break
 		}
 
 		// Decode the incoming message
