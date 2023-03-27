@@ -43,6 +43,7 @@ func init() {
 	label.Wrapping = fyne.TextWrapWord
 	label.Resize(fyne.NewSize(300, label.MinSize().Height))
 	promptInput.SetPlaceHolder("Enter Your Prompt")
+	promptInput.OnSubmitted = onEnterPressed
 	promptInput.SetText("")
 	footer.SetOffset(0.99)
 	content.SetOffset(0.99)
@@ -85,6 +86,21 @@ func showErrorDialog(err error) {
 	dialog.ShowError(err, myWindow)
 }
 
+func onEnterPressed(text string) {
+	loadingIndicator.Show()
+
+	prompt := promptInput.Text
+	promptInput.SetText("")
+
+	res <- Message{
+		APIKey:  apiKey,
+		Client:  "ios",
+		Content: prompt,
+	}
+
+	loadingIndicator.Hide()
+}
+
 func copyText() {
 	err := clipboard.WriteAll(contentText)
 	if err != nil {
@@ -101,7 +117,7 @@ func clearText() {
 func onAnswerTapped() {
 	loadingIndicator.Show()
 
-	prompt := promptInput.Text + "\n\n" + contentText
+	prompt := contentText
 
 	res <- Message{
 		APIKey:  apiKey,

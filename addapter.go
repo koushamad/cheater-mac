@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"time"
 )
 
 type Message struct {
@@ -33,9 +34,17 @@ func Listen(req chan Message, res chan Message, done chan bool) {
 		showErrorDialog(err)
 	}
 
+	// Send periodic ping messages to keep the connection alive
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
 	go func() {
 		for {
 			select {
+			case <-ticker.C:
+				if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(5*time.Second)); err != nil {
+					showErrorDialog(err)
+				}
 			case msg := <-res:
 				if err := conn.WriteJSON(msg); err != nil {
 					showErrorDialog(err)
