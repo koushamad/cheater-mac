@@ -9,11 +9,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/0x9ef/openai-go"
 	"github.com/atotto/clipboard"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
 	"golang.org/x/net/context"
 	"log"
-	"net/http"
 	"sync"
 )
 
@@ -24,7 +21,7 @@ type textData struct {
 var (
 	lock = sync.Mutex{}
 
-	cheatContent              = make(chan string, 1)
+	cheatContent              = make(chan Message, 1)
 	aiAns                     = make(chan string, 1)
 	aiTranslate               = make(chan string, 1)
 	cheatContentText          = ""
@@ -89,13 +86,14 @@ func init() {
 func main() {
 	log.SetFlags(log.LstdFlags)
 
-	go runServer(cheatContent)
+	go runServer()
 
 	go func() {
 		for {
 			select {
-			case text := <-cheatContent:
-				cheatContentText = text
+			case msg := <-cheatContent:
+				cheatContentText += msg.Content +
+					"\n\n" + "-----------------------------------------------------------------------------\n\n"
 				label1.SetText(cheatContentText)
 				lock.Unlock()
 			case text := <-aiAns:
@@ -184,33 +182,15 @@ func onTranslateAITapped() {
 	}()
 }
 
-func runServer(cheatContent chan string) {
-	gin.DisableConsoleColor()
+func runServer() {
 
-	r := gin.Default()
+	msg := make(chan Message)
+	go ListenWS(msg)
 
-	// Enable CORS for all origins with a wildcard
-	config := cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"POST", "GET"},
-		AllowHeaders:     []string{"Origin", "Content-Type"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}
-	r.Use(cors.New(config))
-
-	r.POST("/push", func(c *gin.Context) {
-		// parse json to textData struct
-		var data textData
-		if err := c.ShouldBindJSON(&data); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+	for {
+		select {
+		case m := <-msg:
+			cheatContent <- m
 		}
-
-		// send text data to channel
-		cheatContent <- data.Text
-		c.JSON(http.StatusOK, gin.H{"message": "Text data received and saved"})
-	})
-
-	r.Run()
+	}
 }
