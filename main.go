@@ -10,7 +10,6 @@ import (
 	"github.com/0x9ef/openai-go"
 	"github.com/atotto/clipboard"
 	"golang.org/x/net/context"
-	"log"
 	"sync"
 )
 
@@ -84,29 +83,28 @@ func init() {
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags)
-
 	go runServer()
-
-	go func() {
-		for {
-			select {
-			case msg := <-cheatContent:
-				cheatContentText += msg.Content +
-					"\n\n" + "-----------------------------------------------------------------------------\n\n"
-				label1.SetText(cheatContentText)
-				lock.Unlock()
-			case text := <-aiAns:
-				aiAnsText = text
-				label2.SetText(aiAnsText)
-			case text := <-aiTranslate:
-				aiTranslateText = text
-				label1.SetText(aiTranslateText)
-			}
-		}
-	}()
+	go listenServer()
 
 	myWindow.ShowAndRun()
+}
+
+func listenServer() {
+	for {
+		select {
+		case msg := <-cheatContent:
+			cheatContentText += msg.Content +
+				"\n\n" + "-----------------------------------------------------------------------------\n\n"
+			label1.SetText(cheatContentText)
+			lock.Unlock()
+		case text := <-aiAns:
+			aiAnsText = text
+			label2.SetText(aiAnsText)
+		case text := <-aiTranslate:
+			aiTranslateText = text
+			label1.SetText(aiTranslateText)
+		}
+	}
 }
 
 func updateAttributes() {

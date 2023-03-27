@@ -30,27 +30,29 @@ type Message struct {
 
 func ListenWS(meg chan Message) {
 	connect()
-	defer conn.Close()
 	listen(meg)
 	register()
 	disconnect()
 	<-done
 	time.Sleep(1 * time.Second)
+	conn.Close()
 	ListenWS(meg)
 }
 
-func connect() *websocket.Conn {
+func connect() {
 
 	// Define the WebSocket URL
 	serverURL := url.URL{Scheme: "wss", Host: "cheater-server-mbmu9.ondigitalocean.app", Path: "/ws"}
 
 	// Connect to the WebSocket server
-	conn, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
+	connection, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
 	if err != nil {
 		log.Fatal("Error connecting to the WebSocket server:", err)
+		time.Sleep(5 * time.Second)
+		connect()
 	}
 
-	return conn
+	conn = connection
 }
 
 func disconnect() {
